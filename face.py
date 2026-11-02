@@ -5,12 +5,21 @@ import random
 import threading
 import time
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 W, H = 128, 32
 LX, RX, CY = 40, 88, 16     # eye centers
 
-EXPRESSIONS = ("neutral", "happy", "sleepy", "bored", "surprised", "love", "shy", "sulky", "scared")
+EXPRESSIONS = ("neutral", "happy", "sleepy", "bored", "surprised", "love", "shy", "sulky", "scared",
+               "confused", "dead", "show_rock", "show_paper", "show_scissors")
+# any "text:<s>" expression shows big text (countdowns, level numbers)
+
+
+def _font(size):
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:                     # Pillow < 10.1
+        return ImageFont.load_default()
 
 
 def _eye_box(cx, cy, w, h):
@@ -77,6 +86,33 @@ def render(expr, t):
             d.line((x1 + shake, CY - 2, x0 + shake, CY + 5), fill=255, width=4)
         d.ellipse((112, 2 + shake, 120, 14 + shake), fill=255)   # sweat drop
         d.polygon([(113, 6 + shake), (119, 6 + shake), (116, 0 + shake)], fill=255)
+    elif expr == "confused":
+        d.rounded_rectangle(_eye_box(LX, CY + 2, 18, 18), radius=5, fill=255)      # one big eye
+        d.rounded_rectangle(_eye_box(RX, CY + 5, 16, 8), radius=3, fill=255)       # one squint
+        bob = int(2 * math.sin(t * 5))
+        d.text((110, 2 + bob), "?", fill=255, font=_font(22))
+    elif expr == "dead":
+        for cx in (LX, RX):                                                         # X X eyes
+            d.line((cx - 9, CY - 9, cx + 9, CY + 9), fill=255, width=4)
+            d.line((cx - 9, CY + 9, cx + 9, CY - 9), fill=255, width=4)
+    elif expr == "show_rock":
+        d.ellipse((50, 2, 78, 30), fill=255)
+        for k in range(4):                                                           # knuckle lines
+            d.line((54 + 6 * k, 6, 54 + 6 * k, 14), fill=0, width=2)
+    elif expr == "show_paper":
+        d.rounded_rectangle((48, 10, 76, 31), radius=5, fill=255)                    # palm
+        for k in range(4):
+            d.rounded_rectangle((49 + 7 * k, 0, 54 + 7 * k, 12), radius=2, fill=255)  # fingers
+        d.rounded_rectangle((76, 14, 84, 20), radius=2, fill=255)                    # thumb
+    elif expr == "show_scissors":
+        d.ellipse((52, 16, 76, 31), fill=255)
+        d.line((58, 18, 50, 0), fill=255, width=5)
+        d.line((68, 18, 78, 0), fill=255, width=5)
+    elif expr.startswith("text:"):
+        text = expr[5:]
+        f = _font(28)
+        box = d.textbbox((0, 0), text, font=f)
+        d.text(((W - box[2] - box[0]) // 2, (H - box[3] - box[1]) // 2), text, fill=255, font=f)
     return img
 
 
@@ -112,8 +148,12 @@ class Face:
         with self._lock:
             return self.expr if time.time() < self._until else self.base
 
-    def png(self, scale=4):
-        img = self._img.resize((W * scale, H * scale), Image.NEAREST).convert("L")
+    def png(self, scale=4, expr=None, color=None):
+        """Current face as PNG; or a fixed expression (e.g. for the 라즈봇 card), optionally coloured."""
+        img = render(expr, 1.0) if expr in EXPRESSIONS else self._img
+        img = img.resize((W * scale, H * scale), Image.NEAREST).convert("L")
+        if color:
+            img = ImageOps.colorize(img, black="#000000", white="#" + color)
         buf = io.BytesIO()
         img.save(buf, "PNG")
         return buf.getvalue()

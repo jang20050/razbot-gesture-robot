@@ -1,29 +1,83 @@
-"""Flask web UI: hand-gesture driving, goal / home-run celebration and companion (emotion) mode."""
+"""Flask web UI: hand-gesture driving, goal / home-run celebration, companion mode and the pet game (/game)."""
 import argparse
+import os
+import re
+import secrets
+import sys
 import threading
 import time
+from pathlib import Path
 
 import cv2
-from flask import Flask, Response, jsonify, render_template_string
+import numpy as np
+from flask import Flask, Response, jsonify, render_template_string, request, send_from_directory
 
 from companion import Companion
 from control import Controller
 from face import Face
 from gesture import GestureDetector, draw
+from petgame import ALBUM_DIR, PetGame
+from robot import BUZZ, Robot
 from scene import SceneDetector
 
-LABEL_KO = {"rock": "주먹 ✊", "paper": "보 ✋", "scissors": "가위 ✌️", "thumbs_up": "최고 👍",
-            "unknown": "알 수 없음", None: "손 없음"}
+LABEL_KO = {"rock": "주먹 ✊", "paper": "보 ✋", "scissors": "가위 ✌️", "thumbs_up": "최고 👍", "one": "검지 ☝️",
+            "horns": "락 🤘", "three": "세 손가락 🤟", "unknown": "알 수 없음", None: "손 없음"}
 
-app = Flask(__name__)
+WEB = Path(__file__).with_name("web")            # the game page; the same files are deployed to Vercel
+TOKEN_FILE = Path(__file__).with_name(".token")  # access code for tunnel visitors (created by tunnel.sh)
+
+app = Flask(__name__, static_folder=str(WEB / "static"), static_url_path="/static")
+
+# ---------- remote access: the game page on Vercel talks to this robot ----------
+# Browsers allow an https page (Vercel) to call http://localhost, so a PC works directly. A Raspberry Pi needs an
+# https tunnel (tunnel.sh / Cloudflare); everything arriving through it must carry the access code.
+SITE_ORIGINS = [re.compile(r"^https://razbot[a-z0-9-]*\.vercel\.app$"),
+                re.compile(r"^https://jang20050\.github\.io$"),               # GitHub Pages copy of web/
+                re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")]
+access = {"token": os.environ.get("RAZBOT_TOKEN", "")}
+
+
+def _origin_allowed(origin):
+    return bool(origin) and any(p.match(origin) for p in SITE_ORIGINS)
+
+
+def _through_tunnel():
+    return "Cf-Connecting-Ip" in request.headers or "Cf-Ray" in request.headers
+
+
+@app.before_request
+def guard():
+    if request.method == "OPTIONS":
+        return Response(status=204)               # CORS preflight; headers are added below
+    if not _through_tunnel():
+        return None                               # same PC / same Wi-Fi: open as before
+    given = request.headers.get("X-Razbot-Token") or request.args.get("t", "")
+    if not access["token"] or not secrets.compare_digest(given, access["token"]):
+        return jsonify(ok=False, msg="접속 코드가 필요해요"), 401
+    return None
+
+
+@app.after_request
+def cors(resp):
+    origin = request.headers.get("Origin")
+    if _origin_allowed(origin):
+        resp.headers["Access-Control-Allow-Origin"] = origin
+        resp.headers["Vary"] = "Origin"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Razbot-Token"
+        resp.headers["Access-Control-Allow-Private-Network"] = "true"   # Chrome: public site -> localhost
+    return resp
+
+
 state = {"frame": None, "status": {}, "fps": 0.0, "fingers": None, "mode": "hand"}
 state_lock = threading.Lock()
 ctrl: Controller = None
 scene: SceneDetector = None
 face: Face = None
 pet: Companion = None
+game: PetGame = None
 robot = None
-sound = {"on": True}
+sound = {"on": True, "mode": "normal"}   # robot buzzer: on/off (main page) + mode off/quiet/normal (game page)
 celebrating = threading.Event()
 celebrations = {"count": 0, "last": 0.0}
 
@@ -49,19 +103,66 @@ def celebrate():
     threading.Thread(target=run, daemon=True).start()
 
 
-def camera_loop(cam_index):
-    cap = cv2.VideoCapture(cam_index, cv2.CAP_V4L2)
+camera = {"on": True, "error": None}   # the user can switch the camera on/off from the web pages
+
+
+def placeholder_frame(text):
+    frame = np.zeros((480, 640, 3), np.uint8)
+    (w, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.4, 3)
+    cv2.putText(frame, text, ((640 - w) // 2, 250), cv2.FONT_HERSHEY_SIMPLEX, 1.4, (90, 90, 90), 3)
+    return frame
+
+
+def open_camera(cam_index):
+    backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
+    cap = cv2.VideoCapture(cam_index, backend)
+    if not cap.isOpened():
+        cap.release()
+        return None
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-    detector = GestureDetector()
+    return cap
+
+
+def camera_loop(cam_index):
+    cap = None
+    detector = None
     t_prev = time.time()
     fps = 0.0
+    misses = 0
     while True:
-        ok, frame = cap.read()
+        want = camera["on"] and cam_index >= 0
+        if want and cap is None:
+            cap = open_camera(cam_index)
+            if cap is not None and detector is None:
+                try:
+                    detector = GestureDetector()
+                except Exception as e:  # e.g. hand_landmarker.task not downloaded yet
+                    print("hand detection unavailable:", e)
+                    cap.release()
+                    cap = None
+            if cap is None:
+                camera.update(on=False, error="카메라를 열 수 없어요")
+            misses = 0
+        elif not want and cap is not None:
+            cap.release()                  # really frees the webcam (its light goes off)
+            cap = None
+        ok, frame = cap.read() if cap is not None else (False, None)
         if not ok:
+            # camera off / missing: keep the page and the pet alive with a placeholder picture and "no hand"
+            misses += 1
             ctrl.update(None)
+            if state["mode"] == "pet":
+                game.update(None, None)
+                pet.update(None, None)
+            if cap is None or misses > 20:
+                text = "CAMERA OFF" if not camera["on"] else "NO CAMERA"
+                _, jpg = cv2.imencode(".jpg", placeholder_frame(text))
+                with state_lock:
+                    state.update(frame=jpg.tobytes(), status={"label": None}, fps=0.0, fingers=None)
             time.sleep(0.1)
             continue
+        misses = 0
         mode = state["mode"]
         if mode in ("hand", "pet"):
             frame = cv2.flip(frame, 1)  # mirror view
@@ -69,6 +170,7 @@ def camera_loop(cam_index):
             if mode == "hand":
                 status = ctrl.update(label)
             else:
+                game.update(label, lm)
                 pet.update(label, lm)
                 status = {"label": label}
             if lm is not None:
@@ -109,7 +211,9 @@ def get_state():
     s.update(ctrl.snapshot())
     s["scene"] = scene.snapshot()
     s["pet"] = pet.snapshot()
+    s["pet"].update(affection=game.s["xp"], level=game.level)
     s["sound"] = sound["on"]
+    s["camera"] = camera
     s["celebrating"] = celebrating.is_set()
     s["celebrations"] = celebrations["count"]
     s["label_ko"] = LABEL_KO.get(s["status"].get("label"), "?")
@@ -118,7 +222,10 @@ def get_state():
 
 @app.route("/face.png")
 def face_png():
-    return Response(face.png(), mimetype="image/png", headers={"Cache-Control": "no-store"})
+    color = request.args.get("color", "")
+    color = color if len(color) in (3, 6) and all(c in "0123456789abcdefABCDEF" for c in color) else None
+    return Response(face.png(expr=request.args.get("expr"), color=color), mimetype="image/png",
+                    headers={"Cache-Control": "no-store"})
 
 
 @app.route("/pet/<event>", methods=["POST"])
@@ -126,15 +233,94 @@ def pet_event(event):
     return jsonify(ok=pet.trigger(event))
 
 
+# ---------- pet game ----------
+@app.route("/game")
+def game_page():
+    return send_from_directory(WEB, "game.html")
+
+
+@app.route("/game/state")
+def game_state():
+    with state_lock:
+        cam = {"label": state["status"].get("label"), "fps": round(state["fps"], 1), "mode": state["mode"]}
+    c = pet.snapshot()
+    return jsonify(game=game.snapshot(), pet=c, cam=cam, motion=ctrl.motion_enabled, sound=sound["on"],
+                   buzz=sound["mode"] if sound["on"] else "off", robot=robot is not None, camera=camera,
+                   label_ko=LABEL_KO.get(cam["label"], "?"), steps=Robot.STEPS)
+
+
+@app.route("/game/act/<action>", methods=["POST"])
+def game_act(action):
+    data = request.get_json(silent=True) or {}
+    if action == "enter":
+        ctrl.halt()
+        state["mode"] = "pet"
+        scene.enabled = False
+        return jsonify(ok=True)
+    handlers = {
+        "treat": game.treat, "sleep": game.sleep, "wake": game.wake, "rps": game.rps, "come": game.come,
+        "stop": game.stop_activity,
+        "train": lambda: game.train(data.get("trick")),
+        "good": lambda: game.reward(True), "bad": lambda: game.reward(False),
+        "rename": lambda: game.rename(data.get("name")),
+        "custom": lambda: game.set_custom(data.get("steps") or []),
+        "demo": lambda: game.set_demo(data.get("on")),
+        "voice": game.reroll_voice,
+        "photo_delete": lambda: game.delete_photo(str(data.get("file") or "")),
+    }
+    if action not in handlers:
+        return jsonify(ok=False, msg="알 수 없는 행동"), 404
+    msg = handlers[action]()
+    return jsonify(ok=msg is None, msg=msg)
+
+
+@app.route("/game/card")
+def game_card():
+    return jsonify(game.card())
+
+
+@app.route("/album/<path:name>")
+def album_photo(name):
+    return send_from_directory(ALBUM_DIR, name)
+
+
 @app.route("/pet/mood/<mood>", methods=["POST"])
 def pet_mood(mood):
     return jsonify(ok=pet.set_mood(mood))
 
 
+@app.route("/camera/<onoff>", methods=["POST"])
+def set_camera(onoff):
+    camera.update(on=onoff == "on", error=None)
+    return jsonify(camera=camera)
+
+
+def apply_sound():
+    if robot:
+        robot.buzz_mode = sound["mode"] if sound["on"] else "off"
+
+
 @app.route("/sound/<onoff>", methods=["POST"])
 def set_sound(onoff):
     sound["on"] = onoff == "on"
+    if sound["on"] and sound["mode"] == "off":
+        sound["mode"] = "normal"
+    apply_sound()
     return jsonify(sound=sound["on"])
+
+
+@app.route("/buzz/<mode>", methods=["POST"])
+def set_buzz(mode):
+    """Robot buzzer from the game page: off / quiet (short beeps) / normal, or 'test' for one beep."""
+    if mode == "test":
+        if robot and sound["on"]:
+            threading.Thread(target=robot.pattern, args=(BUZZ["happy"],), daemon=True).start()
+        return jsonify(ok=robot is not None, msg=None if robot else "라즈봇이 연결되어 있지 않아 부저를 울릴 수 없어요")
+    if mode not in ("off", "quiet", "normal"):
+        return jsonify(ok=False), 404
+    sound.update(on=mode != "off", mode=mode)
+    apply_sound()
+    return jsonify(ok=True, buzz=mode)
 
 
 @app.route("/mode/<mode>", methods=["POST"])
@@ -227,10 +413,11 @@ PAGE = """<!doctype html>
  .pbtns button.on{outline:2px solid var(--acc)}
  .behav{margin-top:10px;padding:10px;border-radius:8px;background:rgba(127,127,127,.1)}
 </style></head><body>
-<header><h1>🤖 라즈봇</h1>
+<header><h1>🤖 라즈봇 <a href="/game" style="font-size:14px;margin-left:8px">🎮 라즈봇 키우기 →</a></h1>
  <div class="tabs"><button id="m-hand">✋ 손 조종</button><button id="m-watch">⚽ 경기 관람</button><button id="m-pet">🐶 교감</button></div>
  <div class="ctl">
   <label>속도 <input type="range" id="speed" min="30" max="255" step="5"> <span id="spv"></span></label>
+  <label><input type="checkbox" id="camera"> 📷 카메라</label>
   <label><input type="checkbox" id="sound"> 소리</label>
   <label><input type="checkbox" id="motion"> 로봇 움직이기</label></div></header>
 <main>
@@ -302,6 +489,8 @@ $('m-hand').onclick=()=>post('/mode/hand');
 $('m-watch').onclick=()=>post('/mode/watch');
 $('m-pet').onclick=()=>post('/mode/pet');
 $('sound').onchange=e=>post('/sound/'+(e.target.checked?'on':'off'));
+let camClick=0;
+$('camera').onchange=e=>{camClick=Date.now();post('/camera/'+(e.target.checked?'on':'off'));};
 const MOOD={neutral:'😐 평온',happy:'😊 기쁨',sleepy:'😴 졸림',bored:'🥱 심심',surprised:'😮 놀람',love:'🥰 사랑',shy:'☺️ 부끄럼',sulky:'😤 삐짐',scared:'😨 무서움'};
 const PBTN=[['hello','👋 인사'],['high_five','✋ 하이파이브'],['pet','🤚 쓰담쓰담'],['praise','👍 칭찬'],['happy','😊 기쁨'],['shy','☺️ 부끄럼'],
  ['surprised','😮 놀람'],['scared','👊 위협'],['call','🥺 놀아줘'],['sulk','😤 삐짐'],['morning','☀️ 아침'],['night','🌙 잘 자']];
@@ -323,6 +512,7 @@ async function tick(){
   document.querySelectorAll('.moff').forEach(e=>e.style.display=s.motion_enabled?'none':'block');
   if(!synced){$('motion').checked=s.motion_enabled;$('sound').checked=s.sound;$('speed').value=s.speed;$('spv').textContent=s.speed;
    $('th').value=Math.round(S.threshold*100);$('thv').textContent=Math.round(S.threshold*100)+'%';synced=true;}
+  if(Date.now()-camClick>1500) $('camera').checked=s.camera.on;
   $('party').style.display=s.celebrating?'flex':'none';
   $('fps').textContent=$('fps2').textContent=s.fps+' fps';
   if(mode==='pet'){
@@ -365,14 +555,18 @@ tick();
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cam", type=int, default=0)
+    ap.add_argument("--cam", type=int, default=0, help="camera index, -1 for no camera")
     ap.add_argument("--port", type=int, default=5000)
+    ap.add_argument("--host", default="0.0.0.0", help="127.0.0.1 = only this computer")
     ap.add_argument("--no-robot", action="store_true")
+    ap.add_argument("--camera-off", action="store_true", help="start with the camera off (turn it on from the page)")
     args = ap.parse_args()
+    camera["on"] = not args.camera_off
+    if not access["token"] and TOKEN_FILE.exists():
+        access["token"] = TOKEN_FILE.read_text(encoding="utf-8").strip()
 
     if not args.no_robot:
         try:
-            from robot import Robot
             robot = Robot()
             robot.stop()
         except Exception as e:  # keep the web UI usable without the motor board
@@ -382,9 +576,11 @@ if __name__ == "__main__":
     face = Face()
     pet = Companion(robot, face, motion_on=lambda: ctrl.motion_enabled, sound_on=lambda: sound["on"],
                     active=lambda: state["mode"] == "pet")
+    game = PetGame(pet, robot, face, motion_on=lambda: ctrl.motion_enabled, frame_jpg=lambda: state["frame"],
+                   active=lambda: state["mode"] == "pet")
     threading.Thread(target=camera_loop, args=(args.cam,), daemon=True).start()
     try:
-        app.run(host="0.0.0.0", port=args.port, threaded=True)
+        app.run(host=args.host, port=args.port, threaded=True)
     finally:
         if robot:
             robot.stop()

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>라즈봇 키우기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/game.css">
+</head>
+<body>
+<header class="top">
+  <a class="back" href="/" title="메인 화면">←</a>
+  <div class="lvbadge"><small>Lv</small><b id="lv">1</b></div>
+  <div class="who">
+    <div class="namebox">
+      <span id="name" class="name" title="눌러서 이름 바꾸기">라즈봇</span>
+      <input id="nameInput" class="hide" maxlength="12">
+      <span class="chip" id="days"></span>
+      <span class="chip fire" id="streak"></span>
+    </div>
+    <div class="xpbar"><div id="xpfill"></div></div>
+    <div class="xptext" id="xptext"></div>
+  </div>
+  <div class="toggles">
+    <button class="conn" id="connChip" title="연결할 라즈봇 바꾸기">🔌 연결 중…</button>
+    <label class="camtoggle"><input type="checkbox" id="camera"> 📷 카메라</label>
+    <label><input type="checkbox" id="motion"> 움직이기</label>
+    <div class="soundwrap">
+      <button class="conn" id="soundBtn" title="소리 조절">🔊 소리</button>
+      <div class="soundpanel hide" id="soundPanel">
+        <div class="sp-head">🎵 목소리 <small class="mut">이 기기 스피커 · 꽥꽥 짹짹</small></div>
+        <label class="sp-row"><input type="checkbox" id="voiceOn"> 켜기</label>
+        <div class="sp-row vol">
+          <span id="volIcon">🔉</span>
+          <input type="range" id="voiceVol" min="0" max="100" step="5">
+          <b id="volText">80</b>
+        </div>
+        <button class="sp-test" data-say="happy">▶ 들어보기</button>
+
+        <div class="sp-head">🔔 라즈봇 부저 <small class="mut">로봇 본체 · 삐삐</small></div>
+        <div class="seg" id="buzzSeg">
+          <button data-buzz="off">끄기</button>
+          <button data-buzz="quiet">작게</button>
+          <button data-buzz="normal">보통</button>
+        </div>
+        <small class="mut sp-note">부저는 음량을 바꿀 수 없어서 "작게"는 횟수는 그대로, 소리를 짧게 울려요.</small>
+        <button class="sp-test" id="buzzTest">▶ 부저 시험 (삐삐)</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="grid">
+  <section class="hero card">
+    <div class="bubble" id="bubble">안녕! 반가워요 👋</div>
+    <div class="robot">
+      <div class="ears"><i></i><i></i></div>
+      <div class="screen"><img id="face" alt="라즈봇 얼굴"></div>
+      <div class="wheels"><i></i><i></i></div>
+    </div>
+    <div class="mood"><span id="mood">😐 평온</span><span class="mut" id="behav"></span></div>
+
+    <div class="overlay hide" id="activity">
+      <div class="act-title" id="actTitle"></div>
+      <div class="act-big" id="actBig"></div>
+      <div class="act-msg" id="actMsg"></div>
+      <div class="act-btns" id="actBtns"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span>❤️ 행복</span><div class="bar"><div id="happy" class="fill pink"></div></div><b id="happyN"></b></div>
+      <div class="stat"><span>⚡ 에너지</span><div class="bar"><div id="energy" class="fill yellow"></div></div><b id="energyN"></b></div>
+    </div>
+
+    <div class="actions" id="actions"></div>
+
+    <button class="tapsound hide" id="tapSound">🔇 화면을 한 번 누르면 목소리가 들려요</button>
+
+    <details class="cam voicebox" id="voiceBox">
+      <summary>🎵 목소리 <span class="chip" id="voiceSummary"></span></summary>
+      <div class="vtraits" id="voiceTraits"></div>
+      <div class="vbtns" id="voiceBtns"></div>
+      <button class="btn ghost" id="voiceReroll">🎲 목소리 다시 뽑기</button>
+      <p class="mut">라즈봇마다 목소리가 하나씩 정해져 있어요 (Pollen Robotics microduck의 목소리 합성 방식).</p>
+    </details>
+
+    <details class="cam" id="camBox">
+      <summary>📷 카메라 화면 <span class="chip" id="label">손 없음</span></summary>
+      <div class="camoff hide" id="camOff">카메라가 꺼져 있어요. 손짓으로 교감하려면 위쪽 <b>📷 카메라</b>를 켜 주세요.
+        <button class="btn mint" id="camOn">📷 카메라 켜기</button></div>
+      <img id="video" alt="카메라">
+    </details>
+  </section>
+
+  <section class="side">
+    <nav class="tabs" id="tabs">
+      <button data-tab="book" class="on">📖 교감 도감</button>
+      <button data-tab="train">🎓 훈련</button>
+      <button data-tab="quest">📋 오늘의 할 일</button>
+      <button data-tab="memory">📸 추억</button>
+      <button data-tab="card">🪪 카드</button>
+    </nav>
+
+    <div class="tab card" id="tab-book">
+      <p class="lead">친해질수록(레벨이 오를수록) 할 수 있는 교감이 늘어나요.</p>
+      <div class="next" id="next"></div>
+      <div class="unlocks" id="unlocks"></div>
+    </div>
+
+    <div class="tab card hide" id="tab-train">
+      <ol class="steps">
+        <li><b>훈련하기</b>를 누르고 신호 손 모양을 보여 주세요</li>
+        <li>라즈봇이 개인기를 시도해요 (처음엔 자주 틀려요)</li>
+        <li>맞으면 <b>👍 엄지 척</b>, 틀리면 <b>✋ 손바닥</b>으로 알려 주세요</li>
+      </ol>
+      <p class="mut">숙련도 100%가 되면 마스터! 언제든 신호만 보여 주면 개인기를 해요.</p>
+      <div class="tricks" id="tricks"></div>
+      <div class="composer hide" id="composer">
+        <h3>🎬 나만의 개인기 만들기 <small class="mut">(최대 8동작)</small></h3>
+        <div class="seq" id="seq"></div>
+        <div class="palette" id="palette"></div>
+        <button class="btn" id="saveSeq">저장하기</button>
+      </div>
+    </div>
+
+    <div class="tab card hide" id="tab-quest">
+      <div class="streakbox" id="streakbox"></div>
+      <div class="quests" id="quests"></div>
+      <h3>📊 기록</h3>
+      <div class="records" id="records"></div>
+      <label class="demo"><input type="checkbox" id="demo"> 발표용 빠른 성장 (XP ×5, 훈련 ×2)</label>
+    </div>
+
+    <div class="tab card hide" id="tab-memory">
+      <h3>📸 추억 앨범</h3>
+      <div class="album" id="album"></div>
+      <h3>📔 라즈봇 일기</h3>
+      <ul class="diary" id="diary"></ul>
+    </div>
+
+    <div class="tab card hide" id="tab-card">
+      <p class="lead">지금까지 함께한 기록으로 만든 <b>라즈봇 카드</b>예요. 저장해서 친구에게 자랑해 보세요!</p>
+      <div class="cardview"><canvas id="cardCanvas" width="1200" height="630"></canvas></div>
+      <div class="opts">
+        <div class="optrow"><span class="mut">디자인</span><div class="chips" id="optTemplate"></div></div>
+        <div class="optrow"><span class="mut">테마</span><div class="chips" id="optSeason"></div></div>
+        <div class="optrow"><span class="mut">형식</span><div class="chips" id="optFormat"></div></div>
+        <div class="optrow"><span class="mut">사진</span><div class="chips" id="optPhoto"></div></div>
+      </div>
+      <div class="cardbtns">
+        <button class="btn" id="cardSave">💾 이미지 저장</button>
+        <button class="btn mint hide" id="cardShare">📤 공유하기</button>
+        <button class="btn ghost hide" id="cardCopy">📋 복사</button>
+      </div>
+      <h3>📒 기록 수첩</h3>
+      <div class="records" id="cardStats"></div>
+      <h3>🎖️ 배지 <small class="mut" id="badgeCount"></small></h3>
+      <div class="badges" id="badges"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal hide" id="modal">
+  <div class="confetti" id="confetti"></div>
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle"></div>
+    <ul id="modalLines"></ul>
+    <button class="btn" id="modalOk">좋아요!</button>
+  </div>
+</div>
+<div class="modal hide" id="connect">
+  <form class="modal-card connect-card" id="connectForm">
+    <div class="modal-title">🔌 라즈봇 연결</div>
+    <p class="mut" id="connWhy">게임은 라즈봇(또는 PC)에서 돌아가는 프로그램과 연결해서 놀아요.</p>
+    <label class="field">라즈봇 주소
+      <input id="connUrl" placeholder="http://localhost:5000" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="field">접속 코드 <small class="mut">(터널로 연결할 때만)</small>
+      <input id="connToken" placeholder="예: 7f3k-92ab" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="connerr hide" id="connErr"></div>
+    <button class="btn" type="submit" id="connGo">연결하기</button>
+    <a class="btn mint direct hide" id="openDirect" href="http://localhost:5000/game" target="_blank" rel="noopener">💻 이 PC의 게임 화면 바로 열기</a>
+    <details class="connhelp">
+      <summary>어떤 주소를 넣나요?</summary>
+      <ul>
+        <li><b>이 PC에서 <code>play_pc.bat</code>을 켰다면</b> → <code>http://localhost:5000</code></li>
+        <li><b>라즈베리파이라면</b> → 라즈베리파이에서 <code>./tunnel.sh</code>를 실행하고,
+          화면에 나온 <code>https://….trycloudflare.com</code> 주소와 접속 코드를 넣어 주세요.
+          (이 사이트는 https라서 <code>http://192.168.…</code> 주소에는 브라우저가 연결을 막아요)</li>
+      </ul>
+    </details>
+  </form>
+</div>
+<div class="toast hide" id="toast"></div>
+
+<script src="static/voice.js"></script>
+<script src="static/card.js"></script>
+<script src="static/game.js"></script>
+</body>
+</html>

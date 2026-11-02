@@ -5,3 +5,8 @@ app.log
 install.log
 affection.json
 hand_landmarker.task
+petgame.json
+album/
+.token
+bin/
+.vercel/

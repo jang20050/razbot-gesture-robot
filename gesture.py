@@ -38,6 +38,12 @@ def classify(lm):
         return "rock", fingers
     if ext == [True, True, False, False]:
         return "scissors", fingers
+    if ext == [True, False, False, False]:
+        return "one", fingers            # ☝️ index finger
+    if ext == [True, False, False, True]:
+        return "horns", fingers          # 🤘 index + pinky
+    if ext == [True, True, True, False]:
+        return "three", fingers          # three fingers
     if n >= 4:
         return "paper", fingers
     return "unknown", fingers
@@ -46,7 +52,8 @@ def classify(lm):
 class GestureDetector:
     def __init__(self):
         opts = HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=str(MODEL)),
+            # pass the bytes, not the path: MediaPipe on Windows cannot open non-ASCII paths (e.g. "바탕 화면")
+            base_options=BaseOptions(model_asset_buffer=MODEL.read_bytes()),
             running_mode=RunningMode.VIDEO,
             num_hands=1,
             min_hand_detection_confidence=0.6,

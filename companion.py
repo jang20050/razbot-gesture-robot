@@ -4,20 +4,21 @@ Interactions (camera)            Reaction
   wave (fast side-to-side)   ->  hello / good morning / good night
   open palm held still       ->  high five
   slow side-to-side stroke   ->  being petted (love face, gentle nuzzle)
-  thumbs up                  ->  praise (heart, shy back-off, affection +)
-  fist swung / thrust at it  ->  scared: flinches back, trembles for a while (affection -)
+  thumbs up                  ->  praise (heart, shy back-off)
+  fist swung / thrust at it  ->  scared: flinches back, trembles for a while
   nobody for a while         ->  bored -> asks to play -> sulks and turns away
   hand after a long absence  ->  surprised, then happy
+
+The pet game (petgame.py) plugs in through hooks: it can lock interactions until a level is
+reached, receives every reaction as an event, and colours the mood with happiness / energy.
 """
-import json
 import math
 import random
 import threading
 import time
 from collections import deque
-from pathlib import Path
 
-AFFECTION_FILE = Path(__file__).with_name("affection.json")
+from robot import BUZZ
 
 BORED_AFTER = 45          # s without a hand -> bored face
 CALL_EVERY = 90           # s between "play with me" calls
@@ -25,40 +26,34 @@ CALLS_BEFORE_SULK = 3
 SURPRISE_AFTER = 30       # s of absence before a new hand is a surprise
 STABLE_FRAMES = 4
 
-# buzzer rhythms (single pitch, so emotions are told apart by rhythm)
-SOUNDS = {
-    "happy": [(0.06, 0.06), (0.06, 0.06), (0.15, 0)],
-    "hello": [(0.1, 0.12), (0.1, 0)],
-    "night": [(0.4, 0.2), (0.6, 0)],
-    "sad": [(0.7, 0)],
-    "surprised": [(0.03, 0.03)] * 6,
-    "love": [(0.05, 0.12)] * 3 + [(0.25, 0)],
-    "call": [(0.08, 0.08), (0.08, 0.4), (0.08, 0.08), (0.08, 0)],
-    "scared": [(0.25, 0.05)] + [(0.02, 0.04)] * 8,
-}
+# buzzer: one pitch, so each emotion is a number of beeps (see robot.BUZZ)
+SOUNDS = BUZZ
 
 REACTIONS = {
-    # event: (face, hold seconds, sound, body move, affection, korean label)
-    "hello": ("happy", 3, "hello", "greet", 1, "안녕! 👋"),
-    "morning": ("happy", 4, "hello", "happy_wiggle", 1, "좋은 아침! ☀️"),
-    "night": ("sleepy", 6, "night", "greet", 1, "잘 자… 🌙"),
-    "high_five": ("happy", 2.5, "happy", "high_five", 1, "하이파이브! ✋"),
-    "pet": ("love", 4, "love", "nuzzle", 2, "쓰담쓰담 💕"),
-    "praise": ("love", 3, "love", "shy_back", 3, "칭찬 고마워 👍"),
-    "surprised": ("surprised", 2, "surprised", "surprised_jump", 0, "깜짝이야! 😮"),
-    "call": ("bored", 4, "call", "ask_to_play", 0, "놀아줘~ 🥺"),
-    "sulk": ("sulky", 6, "sad", "sulk_turn", 0, "흥! 삐졌어 😤"),
-    "happy": ("happy", 3, "happy", "happy_wiggle", 0, "기분 좋아! 😊"),
-    "shy": ("shy", 3, "love", "shy_back", 0, "부끄러워 ☺️"),
-    "scared": ("scared", 3, "scared", "flinch", -1, "무, 무서워… 😨"),
+    # event: (face, hold seconds, sound, body move, korean label)
+    "hello": ("happy", 3, "hello", "greet", "안녕! 👋"),
+    "morning": ("happy", 4, "hello", "happy_wiggle", "좋은 아침! ☀️"),
+    "night": ("sleepy", 6, "night", "greet", "잘 자… 🌙"),
+    "high_five": ("happy", 2.5, "happy", "high_five", "하이파이브! ✋"),
+    "pet": ("love", 4, "love", "nuzzle", "쓰담쓰담 💕"),
+    "praise": ("love", 3, "love", "shy_back", "칭찬 고마워 👍"),
+    "surprised": ("surprised", 2, "surprised", "surprised_jump", "깜짝이야! 😮"),
+    "call": ("bored", 4, "call", "ask_to_play", "놀아줘~ 🥺"),
+    "sulk": ("sulky", 6, "sad", "sulk_turn", "흥! 삐졌어 😤"),
+    "happy": ("happy", 3, "happy", "happy_wiggle", "기분 좋아! 😊"),
+    "shy": ("shy", 3, "love", "shy_back", "부끄러워 ☺️"),
+    "scared": ("scared", 3, "scared", "flinch", "무, 무서워… 😨"),
 }
-
 
 # how long a reaction keeps colouring the mood afterwards: event -> (mood, seconds)
 MOOD_AFTER = {
     "hello": ("happy", 30), "morning": ("happy", 40), "high_five": ("happy", 30), "happy": ("happy", 40),
     "pet": ("love", 40), "praise": ("love", 30), "shy": ("shy", 15), "scared": ("scared", 12),
 }
+
+# which unlockable feature a camera-detected event belongs to (see petgame.UNLOCKS)
+FEATURE_OF = {"hello": "hello", "morning": "hello", "night": "hello", "pet": "pet",
+              "high_five": "high_five", "praise": "praise", "call": "call", "sulk": "call"}
 
 # mood-driven body language while nothing else is happening:
 # mood -> (min interval s, max interval s, robot method, description)
@@ -72,6 +67,7 @@ IDLE_MOVES = {
     "sulky": (6, 9, "huff", "흥! 하고 고개 홱 돌리기"),
     "scared": (3, 5, "tremble", "벌벌 떨며 조금씩 물러나기"),
 }
+SHY_IDLE = (6, 10, "shy_fidget", "아직 낯가림… 꼼지락꼼지락")
 
 
 class Companion:
@@ -81,7 +77,12 @@ class Companion:
         self.motion_on = motion_on      # callables -> bool
         self.sound_on = sound_on
         self.active = active            # callable -> bool (companion mode selected)
-        self.affection = self._load()
+        # hooks set by the pet game
+        self.gate = lambda feature: None        # -> None if allowed, else a "not yet" message
+        self.on_event = lambda event: None      # every reaction that actually played
+        self.level = lambda: 10
+        self.need_mood = lambda: None           # e.g. "sleepy" when out of energy
+        self.suspended = lambda: False          # True while a game activity owns the camera
         self.events = deque(maxlen=20)
         self.mood = "neutral"
         self._track = deque()           # (t, x, label) of recent hand positions
@@ -97,22 +98,22 @@ class Companion:
         self._glow, self._glow_until = "neutral", 0.0
         self._next_move = time.time() + 3
         self._still_since = 0.0         # when the robot last stopped moving
+        self._last_denied = 0.0
         self.last_move = None
         self._lock = threading.Lock()
         threading.Thread(target=self._behave, daemon=True).start()
 
-    # ---------- persistence ----------
-    def _load(self):
-        try:
-            return json.loads(AFFECTION_FILE.read_text())["affection"]
-        except Exception:
-            return 0
+    def _event_id(self):
+        self._event_seq = getattr(self, "_event_seq", 0) + 1
+        return self._event_seq
 
-    def _save(self):
-        try:
-            AFFECTION_FILE.write_text(json.dumps({"affection": self.affection}))
-        except OSError:
-            pass
+    @property
+    def busy(self):
+        return self._busy.is_set()
+
+    @property
+    def sleeping(self):
+        return self._sleeping
 
     # ---------- per-frame input ----------
     def update(self, label, lm):
@@ -121,7 +122,8 @@ class Companion:
             self._track.clear()
             self._fist.clear()
             self._streak_label, self._streak = None, 0
-            self._idle(now)
+            if not self.suspended():
+                self._idle(now)
             return
 
         absent = now - self._last_seen
@@ -130,7 +132,7 @@ class Companion:
             self._streak += 1
         else:
             self._streak_label, self._streak = label, 1
-        if self._busy.is_set() or now - self._still_since < 0.5:
+        if self._busy.is_set() or now - self._still_since < 0.5 or self.suspended():
             # the camera rides on the robot: while it moves, hand motion in the image is not the user's
             self._track.clear()
             self._fist.clear()
@@ -153,15 +155,26 @@ class Companion:
             return self.trigger("surprised")
         if self._is_wave(now):
             hour = time.localtime().tm_hour
-            return self.trigger("morning" if 5 <= hour < 11 else "night" if hour >= 21 or hour < 5 else "hello")
+            return self._gesture("morning" if 5 <= hour < 11 else "night" if hour >= 21 or hour < 5 else "hello")
         if label == "thumbs_up" and self._streak >= STABLE_FRAMES:
             self._streak = -10**6        # one praise per thumbs-up
-            return self.trigger("praise")
+            return self._gesture("praise")
         if self._is_stroke(now):
-            return self.trigger("pet")
+            return self._gesture("pet")
         if label == "paper" and self._is_still(now, 0.7):
-            return self.trigger("high_five")
+            return self._gesture("high_five")
         self._refresh_mood(now)
+
+    def _gesture(self, event):
+        """A camera-detected interaction: play it, or look puzzled if the game has not unlocked it yet."""
+        denied = self.gate(FEATURE_OF.get(event, event))
+        if denied is None:
+            return self.trigger(event)
+        self._track.clear()
+        now = time.time()
+        if now - self._last_denied > 4:
+            self._last_denied = now
+            self.perform("confused", 2.5, "confused", "confused_tilt", denied)
 
     # ---------- gesture dynamics ----------
     @staticmethod
@@ -227,13 +240,18 @@ class Companion:
         return hour >= 22 or hour < 7
 
     def _refresh_mood(self, now):
-        """Pick the lasting mood: sulky > sleepy > recent feeling > bored > neutral."""
+        """Pick the lasting mood: sulky > sleepy > needs (tired / lonely) > recent feeling > bored > neutral."""
+        need = self.need_mood()
         if self._sulking:
             mood = "sulky"
         elif self._sleeping:
             mood = "sleepy"
+        elif need == "sleepy":
+            mood = "sleepy"
         elif now < self._glow_until:
             mood = self._glow
+        elif need:
+            mood = need
         elif now - self._last_seen > BORED_AFTER:
             mood = "sleepy" if self._night() else "bored"
         else:
@@ -259,6 +277,17 @@ class Companion:
         self._refresh_mood(time.time())
         return True
 
+    def set_sleeping(self, sleeping):
+        self._sleeping = sleeping
+        if sleeping:
+            self._sulking = False
+        self._refresh_mood(time.time())
+
+    def glow(self, mood, seconds):
+        """Keep a mood for a while (used by the game after treats, wins, level-ups...)."""
+        self._glow, self._glow_until = mood, time.time() + seconds
+        self._refresh_mood(time.time())
+
     # ---------- idle behaviour ----------
     def _idle(self, now):
         self._refresh_mood(now)
@@ -267,6 +296,8 @@ class Companion:
         gone = now - self._last_seen
         if gone > BORED_AFTER + 15 and not self._night() and now - self._last_call > CALL_EVERY:
             self._last_call = now
+            if self.gate("call") is not None:
+                return                   # too shy to ask for attention yet
             if self._calls >= CALLS_BEFORE_SULK:
                 self._sulking = True
                 self._calls = 0
@@ -280,13 +311,15 @@ class Companion:
         while True:
             time.sleep(0.3)
             now = time.time()
-            if not (self.robot and self.active() and self.motion_on()) or self._busy.is_set():
+            if not (self.robot and self.active() and self.motion_on()) or self._busy.is_set() or self.suspended():
                 continue
             if now < self._next_move or now - self._last_event_t < 2.0:
                 continue
             lo, hi, move, text = IDLE_MOVES.get(self.mood, IDLE_MOVES["neutral"])
+            if self.mood == "neutral" and self.level() < 3:
+                lo, hi, move, text = SHY_IDLE         # a new pet is still shy
             if self.mood == "happy":                  # the more it likes you, the livelier it gets
-                hi = max(lo, hi - self.affection // 10)
+                hi = max(lo, hi - self.level() // 2)
             self._next_move = now + random.uniform(lo, hi)
             self._busy.set()
             self.last_move = {"time": time.strftime("%H:%M:%S"), "mood": self.mood, "text": text}
@@ -301,12 +334,10 @@ class Companion:
 
     # ---------- reactions ----------
     def trigger(self, event):
-        """Play a reaction (also used by the web test buttons)."""
+        """Play a built-in reaction (camera events and the web test buttons)."""
         if event not in REACTIONS or self._busy.is_set():
             return False
-        face, hold, sound, move, love, text = REACTIONS[event]
-        self._busy.set()
-        self._last_event_t = time.time()
+        face, hold, sound, move, text = REACTIONS[event]
         self._sleeping = event == "night"
         if event not in ("call", "sulk", "surprised", "scared"):
             # a sulking robot stays sulky until it is greeted, praised, petted or high-fived
@@ -314,26 +345,39 @@ class Companion:
         if event in MOOD_AFTER:
             mood, secs = MOOD_AFTER[event]
             self._glow, self._glow_until = mood, time.time() + hold + secs
+        ok = self.perform(face, hold, sound, move, text, event=event)
+        if ok:
+            self.on_event(event)
+        return ok
+
+    def perform(self, face, hold, sound, move, text, event=None, wait=False):
+        """Show a face, play a buzzer rhythm and a body move together. Returns False if already busy."""
+        if self._busy.is_set():
+            return False
+        self._busy.set()
+        self._last_event_t = time.time()
         self._refresh_mood(time.time())
-        if love:
-            self.affection = max(0, self.affection + love)
-            self._save()
         with self._lock:
-            self.events.appendleft({"time": time.strftime("%H:%M:%S"), "event": event, "text": text})
+            # "sound" lets the web page voice the same emotion through the browser (web/static/voice.js)
+            self.events.appendleft({"time": time.strftime("%H:%M:%S"), "event": event or (move if isinstance(move, str) else "move"),
+                                    "text": text, "sound": sound, "id": self._event_id()})
         self.face.show(face, hold)
 
         def run():
             try:
                 threads = []
-                if self.robot and self.sound_on():
+                if self.robot and self.sound_on() and SOUNDS.get(sound):
                     threads.append(threading.Thread(target=self.robot.pattern, args=(SOUNDS[sound],)))
-                if self.robot and self.motion_on():
-                    threads.append(threading.Thread(target=getattr(self.robot, move)))
+                if self.robot and self.motion_on() and move:
+                    target = move if callable(move) else getattr(self.robot, move)
+                    threads.append(threading.Thread(target=target))
                 for th in threads:
                     th.start()
                 for th in threads:
                     th.join()
                 time.sleep(0.5)
+            except OSError:
+                pass  # transient I2C error
             finally:
                 if self.robot:
                     self.robot.stop()
@@ -341,13 +385,16 @@ class Companion:
                 self._still_since = time.time()
                 self._busy.clear()
 
-        threading.Thread(target=run, daemon=True).start()
+        if wait:
+            run()
+        else:
+            threading.Thread(target=run, daemon=True).start()
         return True
 
     def snapshot(self):
         with self._lock:
             glow_left = max(0.0, self._glow_until - time.time()) if self.mood == self._glow else 0.0
-            return {"affection": self.affection, "level": self.affection // 10, "mood": self.mood,
-                    "face": self.face.current(), "events": list(self.events), "busy": self._busy.is_set(),
-                    "sulking": self._sulking, "behavior": IDLE_MOVES.get(self.mood, IDLE_MOVES["neutral"])[3],
+            return {"mood": self.mood, "face": self.face.current(), "events": list(self.events),
+                    "busy": self._busy.is_set(), "sulking": self._sulking, "sleeping": self._sleeping,
+                    "behavior": IDLE_MOVES.get(self.mood, IDLE_MOVES["neutral"])[3],
                     "last_move": self.last_move, "mood_left": round(glow_left)}
