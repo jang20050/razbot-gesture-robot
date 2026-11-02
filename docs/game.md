@@ -8,8 +8,8 @@
 
 ## 1. 실행하기
 
-### 🌐 웹사이트: **https://razbot-game.vercel.app**
-게임 화면은 Vercel에 올라가 있고, **라즈봇(또는 PC)에서 돌아가는 `app.py`와 연결**해서 놀아요.
+### 🌐 웹사이트: **https://razbot-game.vercel.app** · **https://jang20050.github.io/razbot-gesture-robot/**
+게임 화면은 Vercel과 GitHub Pages에 올라가 있고(둘은 같은 화면이에요), **라즈봇(또는 PC)에서 돌아가는 `app.py`와 연결**해서 놀아요.
 사이트는 화면만 보여 주고, 손 인식·로봇 제어·저장은 연결된 라즈봇이 해요. 처음 열면 **🔌 라즈봇 연결** 창이 나와요.
 
 | 라즈봇 프로그램이 도는 곳 | 연결 주소 | 준비 |

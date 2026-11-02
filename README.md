@@ -58,8 +58,11 @@ OLED 얼굴 표정 + 몸짓 + 부저 리듬으로 감정을 표현합니다.
 - 부저는 음높이가 하나라서 감정을 **리듬**으로 구분합니다
 - 로봇이 움직이는 동안에는 손 움직임을 무시합니다 (카메라가 로봇에 달려 있어 생기는 오인식 방지)
 
-## 🌐 웹사이트: https://razbot-game.vercel.app
-게임 화면(`web/`)은 Vercel에 배포되어 있고, 라즈봇이나 PC에서 도는 `app.py`에 연결해서 놀아요.
+## 🌐 웹사이트
+- Vercel: https://razbot-game.vercel.app
+- GitHub Pages: https://jang20050.github.io/razbot-gesture-robot/ (`web/`이 바뀌면 `.github/workflows/pages.yml`이 자동 배포)
+
+두 곳 모두 게임 화면(`web/`)만 올라가 있고, 라즈봇이나 PC에서 도는 `app.py`에 연결해서 놀아요.
 PC는 `http://localhost:5000`, 라즈베리파이는 `./tunnel.sh`(Cloudflare 무료 터널 + 접속 코드)로 연결합니다.
 자세한 방법은 [docs/game.md](docs/game.md#1-실행하기).
 
