@@ -10,3 +10,5 @@ album/
 .token
 bin/
 .vercel/
+ppt/media/*
+!ppt/media/README.md

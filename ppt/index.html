@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>공감을 교류하는 라즈봇</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="slides.css">
+</head>
+<body>
+<div class="viewport" id="viewport">
+<main class="deck" id="deck">
+
+<!-- 1 ─ title -->
+<section class="slide s-title" data-title="표지" data-notes="인사하고 주제를 소개합니다. 화면의 라즈봇 얼굴은 지금 실제 로봇(OLED)과 같은 표정이에요.">
+  <div class="title-left">
+    <div class="kicker">라즈베리파이 5 × 라즈봇 V2 · 손짓 인식 반려 로봇</div>
+    <h1>공감을<br>교류하는 <em>라즈봇</em></h1>
+    <p class="sub">손짓 하나로 마음을 주고받는 로봇 친구</p>
+    <div class="presenter"><span contenteditable="true" spellcheck="false">발표자 이름을 적어 주세요</span> · 2026</div>
+  </div>
+  <div class="title-right">
+    <div class="bubble live-bubble" data-live="bubble">안녕! 반가워요 👋</div>
+    <div class="robot big"><div class="ears"><i></i><i></i></div><div class="screen"><img class="liveface" alt="라즈봇 얼굴"></div><div class="wheels"><i></i><i></i></div></div>
+    <div class="livechip"><span class="dot"></span><span data-live="mood">연결 중…</span></div>
+  </div>
+</section>
+
+<!-- 2 ─ why -->
+<section class="slide" data-title="왜 공감인가" data-notes="문제 제기. 지금의 로봇은 명령을 듣기만 하고, 마음을 주고받지는 않는다는 점을 짚습니다.">
+  <h2>왜 <em>‘공감’</em>하는 로봇일까요?</h2>
+  <div class="cards3">
+    <div class="card pop"><div class="ic">🤖</div><b>명령만 듣는 로봇</b><p>버튼을 누르면 움직이고,<br>끝나면 그대로 멈춰요.<br><span class="mut">한 방향 소통</span></p></div>
+    <div class="card pop"><div class="ic">🐶</div><b>반려동물은 달라요</b><p>나를 알아보고, 반기고,<br>삐지고, 함께 자라요.<br><span class="mut">마음을 주고받는 관계</span></p></div>
+    <div class="card pop"><div class="ic">✋</div><b>말 대신 손짓</b><p>누구나, 시끄러운 곳에서도,<br>말하기 어려워도<br><span class="mut">가장 쉬운 대화 방법</span></p></div>
+  </div>
+  <div class="question">💭 로봇이 <b>내 마음을 알아채고</b>, <b>자기 마음도 보여 준다면</b> 어떨까?</div>
+</section>
+
+<!-- 3 ─ idea -->
+<section class="slide" data-title="핵심 아이디어" data-notes="세 단계를 하나씩 눌러 설명합니다. 마지막에 이 세 단계가 계속 순환하며 관계가 쌓인다는 점을 강조합니다.">
+  <h2>핵심 아이디어: <em>공감의 3단계</em></h2>
+  <p class="lead">각 단계를 눌러 보세요</p>
+  <div class="steps" data-steps>
+    <button class="step on" data-step="0"><span>1</span>👀 알아차리기</button>
+    <div class="arrow">→</div>
+    <button class="step" data-step="1"><span>2</span>💗 표현하기</button>
+    <div class="arrow">→</div>
+    <button class="step" data-step="2"><span>3</span>🌱 함께 자라기</button>
+  </div>
+  <div class="stepbody">
+    <div class="sb on"><h3>손짓으로 마음을 읽어요</h3><ul>
+      <li>카메라 + 손 관절 21개 인식 (MediaPipe)</li>
+      <li>손 <b>모양</b>: 주먹 ✊ 가위 ✌️ 보 ✋ 엄지 👍 …</li>
+      <li>손 <b>움직임</b>: 빠르게 흔들기 = 인사, 천천히 = 쓰담쓰담, 주먹 휘두르기 = 위협</li></ul></div>
+    <div class="sb"><h3>몸 전체로 감정을 보여 줘요</h3><ul>
+      <li>😊 OLED <b>표정 9가지</b> 애니메이션</li>
+      <li>🛞 <b>몸짓</b>: 기쁘면 들썩, 부끄러우면 뒷걸음, 삐지면 등 돌리기</li>
+      <li>🔔 <b>부저</b> 횟수 + 🎵 <b>목소리</b>(꽥꽥·짹짹·구구)</li></ul></div>
+    <div class="sb"><h3>관계가 쌓일수록 더 깊어져요</h3><ul>
+      <li>함께한 시간·교감 → <b>호감도</b> → <b>레벨 1~10</b></li>
+      <li>레벨이 오를수록 할 수 있는 교감이 늘어나요</li>
+      <li>🎓 개인기 훈련 · 📸 추억 · 🪪 라즈봇 카드</li></ul></div>
+  </div>
+  <div class="loopnote">🔁 알아차리고 → 표현하고 → 자라는 과정이 계속 순환하며 <b>관계</b>가 됩니다</div>
+</section>
+
+<!-- 4 ─ hardware -->
+<section class="slide" data-title="하드웨어" data-notes="부품을 하나씩 눌러 설명합니다. 부저는 한 음만 낼 수 있다는 제약이 이후 소리 설계로 이어집니다.">
+  <h2>하드웨어 구성</h2>
+  <div class="hw">
+    <div class="hwpic">
+      <div class="robot huge"><div class="ears"><i></i><i></i></div><div class="screen"><img class="liveface" alt=""></div><div class="wheels"><i></i><i></i></div></div>
+      <button class="hot" style="left:44%;top:6%" data-hw="0">📷</button>
+      <button class="hot" style="left:46%;top:42%" data-hw="1">😊</button>
+      <button class="hot" style="left:10%;top:70%" data-hw="2">🛞</button>
+      <button class="hot" style="left:80%;top:30%" data-hw="3">🔔</button>
+      <button class="hot" style="left:80%;top:70%" data-hw="4">🍓</button>
+    </div>
+    <div class="hwinfo" data-hwinfo>
+      <div class="hi on"><h3>📷 USB 웹캠</h3><p>640×480, 초당 약 15~30프레임. 손 모양과 움직임을 봐요.</p></div>
+      <div class="hi"><h3>😊 OLED 화면</h3><p>SSD1306 128×32, I2C 주소 0x3C. 라즈봇의 <b>얼굴</b>이에요.</p></div>
+      <div class="hi"><h3>🛞 바퀴 4개 + 모터</h3><p>라즈봇 V2 확장보드 (I2C 0x2B)로 제어. 감정을 <b>몸짓</b>으로 보여 줘요.</p></div>
+      <div class="hi"><h3>🔔 부저</h3><p>켜고 끄기만 되는 <b>한 음</b> 부저 → 감정을 울리는 <b>횟수와 길이</b>로 표현해요.</p></div>
+      <div class="hi"><h3>🍓 라즈베리파이 5</h3><p>8GB, Debian 13. 손 인식·감정 엔진·웹 서버가 모두 여기서 돌아가요.</p></div>
+      <p class="mut">아이콘을 눌러 부품을 살펴보세요</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5 ─ software -->
+<section class="slide" data-title="소프트웨어 구조" data-notes="왼쪽에서 오른쪽으로 데이터가 흐릅니다. 블록을 눌러 어떤 파일이 그 역할을 하는지 보여 줍니다.">
+  <h2>소프트웨어 구조 <small class="mut">블록을 눌러 보세요</small></h2>
+  <div class="flow">
+    <button class="fb" data-fb="0">📷<b>카메라</b></button><span class="fa">→</span>
+    <button class="fb" data-fb="1">🖐<b>손 관절 21개</b><small>MediaPipe</small></button><span class="fa">→</span>
+    <button class="fb" data-fb="2">✌️<b>손짓 판정</b><small>모양 + 움직임</small></button><span class="fa">→</span>
+    <button class="fb hl" data-fb="3">💗<b>감정 엔진</b><small>기분·반응</small></button><span class="fa">→</span>
+    <div class="fout">
+      <button class="fb sm" data-fb="4">😊 표정</button>
+      <button class="fb sm" data-fb="5">🛞 몸짓</button>
+      <button class="fb sm" data-fb="6">🔔 부저 · 🎵 목소리</button>
+    </div>
+  </div>
+  <div class="flow2">
+    <button class="fb wide" data-fb="7">🎮 키우기 게임 <small>호감도 · 레벨 · 훈련 · 기록</small></button>
+    <button class="fb wide" data-fb="8">🌐 웹 화면 <small>Flask · Vercel · GitHub Pages</small></button>
+  </div>
+  <div class="fbinfo" data-fbinfo>
+    <div class="fi on">블록을 누르면 설명이 나와요</div>
+    <div class="fi"><code>app.py</code> 카메라를 켜고 끌 수 있고, 프레임마다 손 인식으로 넘겨요.</div>
+    <div class="fi"><code>gesture.py</code> MediaPipe HandLandmarker로 손가락 관절 21개의 위치를 찾아요.</div>
+    <div class="fi"><code>gesture.py</code> 펴진 손가락으로 모양을, <code>companion.py</code>가 시간에 따른 움직임(흔들기·쓰다듬기·휘두르기)을 판정해요.</div>
+    <div class="fi"><code>companion.py</code> 손짓을 감정 반응으로 바꾸고, 지금 기분(기쁨·삐짐·졸림…)을 기억해서 평소 행동까지 바꿔요.</div>
+    <div class="fi"><code>face.py</code> OLED에 표정 애니메이션을 그려요 (웹 화면에도 같은 얼굴).</div>
+    <div class="fi"><code>robot.py</code> I2C로 모터 4개를 제어해 기분별 몸짓을 해요.</div>
+    <div class="fi"><code>robot.py</code> 부저 횟수 규칙 · <code>voice.js</code> 브라우저에서 목소리 합성.</div>
+    <div class="fi"><code>petgame.py</code> 호감도·레벨·해금·훈련·할 일·앨범을 관리하고 저장해요.</div>
+    <div class="fi"><code>web/</code> 게임 화면. 로봇이 직접 보여 주거나 Vercel·GitHub Pages에서 로봇에 연결해요.</div>
+  </div>
+</section>
+
+<!-- 6 ─ live hand recognition -->
+<section class="slide" data-title="손 인식 라이브" data-live-slide data-notes="카메라를 켜고 실제로 손 모양을 바꿔 보입니다. 오른쪽에 인식 결과가 실시간으로 나옵니다.">
+  <h2>라이브: <em>손 인식</em></h2>
+  <div class="two">
+    <div class="camwrap">
+      <img class="livecam" alt="카메라">
+      <div class="camoff" data-live="camoff">📷 카메라가 꺼져 있어요</div>
+      <div class="cambar">
+        <button class="btn mint" data-camera="on">📷 카메라 켜기</button>
+        <button class="btn ghost" data-camera="off">끄기</button>
+      </div>
+    </div>
+    <div class="labelbox">
+      <div class="mut">지금 보이는 손</div>
+      <div class="biglabel" data-live="label">손 없음</div>
+      <div class="glegend">
+        <span>✊ 주먹</span><span>✌️ 가위</span><span>✋ 보</span><span>👍 엄지</span>
+        <span>☝️ 검지</span><span>🤘 락</span><span>🤟 세 손가락</span>
+      </div>
+      <p class="mut">손가락 관절 21개 → 펴진 손가락 수와 모양으로 판정</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 ─ gesture → reaction -->
+<section class="slide" data-title="손짓과 반응" data-notes="시연 버튼을 누르면 실제 라즈봇이 그 반응을 합니다. 카메라 앞에서 직접 손짓을 해도 됩니다.">
+  <h2>손짓 하나에 담긴 <em>마음</em></h2>
+  <div class="two wide-left">
+    <table class="tbl">
+      <tr><th>손짓</th><th>사람의 마음</th><th>라즈봇의 반응</th><th></th></tr>
+      <tr><td>👋 빠르게 흔들기</td><td>반가워!</td><td>방긋 인사 + 꽥!</td><td><button class="demo" data-pet="hello">▶</button></td></tr>
+      <tr><td>🤚 천천히 쓰다듬기</td><td>예뻐해</td><td>하트 눈, 살랑살랑 비비기</td><td><button class="demo" data-pet="pet">▶</button></td></tr>
+      <tr><td>✋ 손바닥 가만히</td><td>같이 놀자</td><td>톡! 하이파이브</td><td><button class="demo" data-pet="high_five">▶</button></td></tr>
+      <tr><td>👍 엄지 척</td><td>잘했어</td><td>부끄러워 뒷걸음</td><td><button class="demo" data-pet="praise">▶</button></td></tr>
+      <tr><td>👊 주먹 휘두르기</td><td>(위협)</td><td>깜짝! 뒤로 주춤, 벌벌</td><td><button class="demo" data-pet="scared">▶</button></td></tr>
+      <tr><td>🙈 오래 안 놀아 주기</td><td>(무관심)</td><td>심심 → 놀아줘 → 삐짐</td><td><button class="demo" data-pet="call">▶</button></td></tr>
+    </table>
+    <div class="side-robot">
+      <div class="bubble live-bubble" data-live="bubble">…</div>
+      <div class="robot"><div class="ears"><i></i><i></i></div><div class="screen"><img class="liveface" alt=""></div><div class="wheels"><i></i><i></i></div></div>
+      <div class="livechip"><span class="dot"></span><span data-live="mood">…</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 ─ faces -->
+<section class="slide" data-title="표정 9가지" data-notes="표정을 누르면 실제 라즈봇의 기분이 그 표정으로 바뀝니다.">
+  <h2>얼굴로 말해요: <em>표정 9가지</em> <small class="mut">눌러서 라즈봇 기분 바꾸기</small></h2>
+  <div class="faces">
+    <button data-mood="neutral"><img data-face="neutral" alt=""><b>😐 평온</b></button>
+    <button data-mood="happy"><img data-face="happy" alt=""><b>😊 기쁨</b></button>
+    <button data-mood="love"><img data-face="love" alt=""><b>🥰 사랑</b></button>
+    <button data-mood="shy"><img data-face="shy" alt=""><b>☺️ 부끄럼</b></button>
+    <button data-pet="surprised"><img data-face="surprised" alt=""><b>😮 놀람</b></button>
+    <button data-mood="scared"><img data-face="scared" alt=""><b>😨 무서움</b></button>
+    <button data-mood="sulky"><img data-face="sulky" alt=""><b>😤 삐짐</b></button>
+    <button data-mood="bored"><img data-face="bored" alt=""><b>🥱 심심</b></button>
+    <button data-mood="sleepy"><img data-face="sleepy" alt=""><b>😴 졸림</b></button>
+  </div>
+</section>
+
+<!-- 9 ─ moods drive behaviour -->
+<section class="slide" data-title="기분과 행동" data-notes="기분은 반응이 끝난 뒤에도 남아서 평소 행동을 바꿉니다. 노드를 눌러 실제 로봇의 기분을 바꿔 보세요.">
+  <h2>기분이 <em>행동</em>을 바꿔요</h2>
+  <div class="moodmap">
+    <button class="mn" style="left:42%;top:4%" data-mood="neutral">😐 평온<small>두리번두리번</small></button>
+    <button class="mn" style="left:8%;top:36%" data-mood="happy">😊 기쁨<small>들썩들썩 춤</small></button>
+    <button class="mn" style="left:8%;top:70%" data-mood="love">🥰 사랑<small>살금살금 비비기</small></button>
+    <button class="mn" style="left:42%;top:40%" data-mood="bored">🥱 심심<small>어슬렁어슬렁</small></button>
+    <button class="mn" style="left:42%;top:76%" data-mood="sulky">😤 삐짐<small>흥! 고개 홱</small></button>
+    <button class="mn" style="left:76%;top:36%" data-mood="scared">😨 무서움<small>벌벌 뒷걸음</small></button>
+    <button class="mn" style="left:76%;top:70%" data-mood="sleepy">😴 졸림<small>꾸벅꾸벅</small></button>
+    <svg class="mlines" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <path d="M45 14 L20 38"/><path d="M20 50 L20 70"/><path d="M50 18 L50 40"/><path d="M50 54 L50 76"/>
+      <path d="M58 14 L80 36"/><path d="M60 14 L84 70"/>
+    </svg>
+    <span class="ml" style="left:22%;top:20%">인사·하이파이브</span>
+    <span class="ml" style="left:6%;top:58%">쓰담·칭찬</span>
+    <span class="ml" style="left:52%;top:26%">45초 무관심</span>
+    <span class="ml" style="left:52%;top:62%">3번 무시</span>
+    <span class="ml" style="left:70%;top:18%">주먹 위협</span>
+    <span class="ml" style="left:66%;top:56%">밤·에너지 부족</span>
+  </div>
+  <div class="livechip center"><span class="dot"></span>지금 라즈봇: <b data-live="mood">…</b> → <span data-live="behavior">…</span></div>
+</section>
+
+<!-- 10 ─ sound -->
+<section class="slide" data-title="소리" data-notes="부저는 한 음뿐이라 횟수로, 목소리는 브라우저에서 합성합니다. 목소리 다시 뽑기로 로봇마다 다른 목소리를 들려줍니다.">
+  <h2>소리로 마음 전하기</h2>
+  <div class="two">
+    <div class="card">
+      <h3>🔔 라즈봇 부저 <small class="mut">한 음 → 횟수와 길이로</small></h3>
+      <div class="buzzlist">
+        <button data-beep="1:s">삐 <small>인사</small></button>
+        <button data-beep="2:s">삐삐 <small>기쁨</small></button>
+        <button data-beep="3:m">삐 삐 삐 <small>사랑·간식</small></button>
+        <button data-beep="2:l">삐— 삐— <small>놀아줘</small></button>
+        <button data-beep="1:xl">삐——— <small>시무룩</small></button>
+        <button data-beep="5:xs">삐삐삐삐삐 <small>놀람</small></button>
+      </div>
+      <div class="beepviz" id="beepviz"></div>
+    </div>
+    <div class="card">
+      <h3>🎵 라즈봇 목소리 <small class="mut">microduck 합성 방식</small></h3>
+      <p class="voicedesc" id="voiceDesc">…</p>
+      <div class="vbtns">
+        <button data-say="hello">👋 인사</button><button data-say="happy">😊 기쁨</button><button data-say="love">🥰 사랑</button>
+        <button data-say="surprised">😮 놀람</button><button data-say="call">🥺 놀아줘</button><button data-say="levelup">🎉 신남</button>
+      </div>
+      <button class="btn ghost" id="voiceShuffle">🎲 다른 라즈봇의 목소리 들어 보기</button>
+      <p class="mut small">숫자 하나(시드)로 음높이·음색·꽥꽥거림·빠르기가 정해져 로봇마다 목소리가 달라요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 ─ growth -->
+<section class="slide" data-title="함께 자라기" data-notes="호감도가 쌓이면 레벨이 오르고, 레벨마다 새로운 교감이 열립니다. 현재 라즈봇의 레벨이 강조되어 있어요.">
+  <h2>함께 자라는 관계: <em>레벨 1 → 10</em></h2>
+  <div class="levels" id="levels">
+    <div data-lv="1"><b>Lv1</b>👋 인사<br>🤚 쓰담쓰담<br>🍪 간식</div>
+    <div data-lv="2"><b>Lv2</b>✋ 하이파이브</div>
+    <div data-lv="3"><b>Lv3</b>👍 칭찬<br>🎓 개인기 훈련</div>
+    <div data-lv="4"><b>Lv4</b>🙇 꾸벅 인사</div>
+    <div data-lv="5"><b>Lv5</b>✊ 가위바위보</div>
+    <div data-lv="6"><b>Lv6</b>🥺 먼저 조르기<br>💃 댄스</div>
+    <div data-lv="7"><b>Lv7</b>👉 이리 와</div>
+    <div data-lv="8"><b>Lv8</b>💀 죽은 척</div>
+    <div data-lv="9"><b>Lv9</b>🥰 애교</div>
+    <div data-lv="10"><b>Lv10</b>🎬 나만의 개인기</div>
+  </div>
+  <div class="growrow">
+    <div class="card mini"><b>❤️ 호감도 얻기</b>함께 1분 +1 · 인사 +3 · 쓰담 +4 · 간식 +5 · 마스터 +30</div>
+    <div class="card mini"><b>🐶 반려동물처럼</b>행복도·에너지 · 간식·재우기 · 낯가림 → 애교</div>
+    <div class="card mini live"><b>지금 우리 라즈봇</b><span data-live="level">…</span></div>
+  </div>
+</section>
+
+<!-- 12 ─ live app -->
+<section class="slide s-app" data-title="앱 라이브 데모" data-notes="실제 앱을 슬라이드 안에서 바로 조작합니다. 화면이 작으면 오른쪽 위 '크게 보기'를 누르세요.">
+  <div class="apphead"><h2>라이브 데모: <em>라즈봇 키우기 앱</em></h2>
+    <div><button class="btn ghost" data-reload="appframe">↻ 새로고침</button> <button class="btn mint" data-zoom="appframe">⛶ 크게 보기</button></div></div>
+  <div class="framewrap" id="appwrap"><iframe id="appframe" data-src="/game" title="라즈봇 키우기 앱" allow="autoplay"></iframe></div>
+</section>
+
+<!-- 13 ─ training -->
+<section class="slide" data-title="개인기 훈련" data-notes="강아지 훈련과 같은 원리입니다. 오른쪽 시뮬레이터로 칭찬을 잘 해 줄수록 빨리 배우는 모습을 보여 줍니다.">
+  <h2>개인기 훈련 = <em>강아지 훈련</em></h2>
+  <div class="two">
+    <div>
+      <div class="trainflow">
+        <div>☝️<b>신호</b><small>손 모양 보여 주기</small></div><span>→</span>
+        <div>🤖<b>시도</b><small>처음엔 자주 틀려요</small></div><span>→</span>
+        <div>👍✋<b>보상</b><small>칭찬 / 바로잡기</small></div>
+      </div>
+      <table class="tbl sm">
+        <tr><th>라즈봇</th><th>내 반응</th><th>숙련도</th></tr>
+        <tr><td>✅ 맞게 함</td><td>👍 칭찬</td><td class="up">+15%</td></tr>
+        <tr><td>❌ 틀림</td><td>✋ 아니야</td><td class="up">+5%</td></tr>
+        <tr><td>❌ 틀림</td><td>👍 칭찬</td><td class="down">−5% (헷갈림)</td></tr>
+      </table>
+      <p class="mut small">성공 확률 = 30% + 숙련도 × 70% · 100%가 되면 🏆 마스터 → 신호만 보여 줘도 개인기!</p>
+    </div>
+    <div class="card sim">
+      <h3>🧪 훈련 시뮬레이터</h3>
+      <div class="simbar"><div id="simFill"></div><span id="simPct">0%</span></div>
+      <div class="simlog" id="simLog">버튼을 눌러 훈련해 보세요</div>
+      <div class="simbtns">
+        <button class="btn mint" data-sim="good">👍 잘 가르치기</button>
+        <button class="btn" data-sim="bad">😵 아무거나 칭찬하기</button>
+        <button class="btn ghost" data-sim="reset">처음부터</button>
+      </div>
+      <div class="simcount" id="simCount"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 ─ card -->
+<section class="slide" data-title="라즈봇 카드" data-notes="지금까지의 실제 기록으로 그린 카드입니다. 디자인을 바꿔 가며 보여 줍니다.">
+  <h2>추억을 나누기: <em>라즈봇 카드</em></h2>
+  <div class="cardstage"><canvas id="cardCanvas" width="1200" height="630"></canvas></div>
+  <div class="chips" id="cardChips">
+    <button data-tpl="passport" class="on">🛂 여권</button><button data-tpl="gameboy">🎮 게임보이</button>
+    <button data-tpl="polaroid">📷 폴라로이드</button><button data-tpl="receipt">🧾 영수증</button><button data-tpl="player">⚽ 선수 카드</button>
+  </div>
+</section>
+
+<!-- 15 ─ video -->
+<section class="slide" data-title="시연 영상" data-notes="미리 찍은 시연 영상을 재생합니다. ppt/media 폴더에 넣은 영상이 자동으로 목록에 나오고, 파일을 끌어다 놓아도 됩니다.">
+  <h2>시연 영상</h2>
+  <div class="videowrap" id="videoDrop">
+    <video id="video" controls playsinline></video>
+    <div class="vempty" id="videoEmpty">🎬<b>영상을 여기로 끌어다 놓으세요</b><span>또는 <code>ppt/media</code> 폴더에 mp4 파일을 넣으면 자동으로 나와요</span>
+      <label class="btn mint">파일 고르기<input type="file" accept="video/*" id="videoPick" hidden></label></div>
+  </div>
+  <div class="chips" id="videoList"></div>
+</section>
+
+<!-- 16 ─ anywhere -->
+<section class="slide" data-title="어디서나 함께" data-notes="로봇 프로그램은 PC나 라즈베리파이에서 돌고, 화면은 어디서든 열 수 있습니다. 터널로 열 때는 접속 코드로 보호합니다.">
+  <h2>어디서나 함께: <em>웹으로 연결</em></h2>
+  <div class="net">
+    <div class="node"><div class="ic">🤖</div><b>라즈봇 / PC</b><small>app.py · 손 인식 · 감정 엔진 · 저장</small></div>
+    <div class="links">
+      <div>같은 와이파이 <code>http://IP:5000/game</code></div>
+      <div>이 PC <code>localhost:5000</code></div>
+      <div>멀리서 <code>tunnel.sh</code> + 🔒 접속 코드</div>
+    </div>
+    <div class="node"><div class="ic">🌐</div><b>웹 화면</b><small>Vercel · GitHub Pages · 휴대폰</small></div>
+  </div>
+  <div class="urls">
+    <div><b>Vercel</b> razbot-game.vercel.app</div>
+    <div><b>GitHub</b> jang20050.github.io/razbot-gesture-robot</div>
+  </div>
+  <p class="mut center">사이트에는 화면만 있고, 사진·기록은 모두 라즈봇에 저장돼요.</p>
+</section>
+
+<!-- 17 ─ inspiration -->
+<section class="slide" data-title="참고한 프로젝트" data-notes="오픈소스에서 배운 점을 밝힙니다. Apache-2.0 라이선스로 출처를 표기했습니다.">
+  <h2>배우고 다듬기: <em>microduck</em>에서 온 아이디어</h2>
+  <p class="lead">Pollen Robotics의 오픈소스 오리 로봇 <b>microduck</b> (Apache-2.0)</p>
+  <div class="cards3">
+    <div class="card"><div class="ic">📒</div><b>Vet book → 라즈봇 카드</b><p>함께한 기록을 공유 카드로<br>여권·게임보이·영수증…</p></div>
+    <div class="card"><div class="ic">🎵</div><b>목소리 합성 → 라즈봇 목소리</b><p>시드 하나로 정해지는 목소리<br>Rust 코드를 JavaScript로 이식</p></div>
+    <div class="card"><div class="ic">🧪</div><b>시뮬레이션 → 로봇 없이 개발</b><p>로봇이 없어도<br>PC에서 화면·게임 실행</p></div>
+  </div>
+  <p class="mut center">걷기 정책 학습(강화학습)처럼 바퀴 로봇에 맞지 않는 부분은 제외했어요.</p>
+</section>
+
+<!-- 18 ─ reflection -->
+<section class="slide" data-title="돌아보기" data-notes="잘 된 점과 앞으로 확인하고 더할 것을 솔직하게 정리합니다.">
+  <h2>돌아보기</h2>
+  <div class="two">
+    <div class="card"><h3>✅ 만든 것</h3><ul>
+      <li>손 모양 7종 + 움직임 4종(흔들기·쓰담·하이파이브·위협) 인식</li>
+      <li>표정 9종 · 기분별 행동 · 부저 · 목소리</li>
+      <li>레벨 10단계 키우기 게임 · 개인기 훈련 · 라즈봇 카드</li>
+      <li>웹으로 어디서나 연결 (Vercel · GitHub Pages)</li></ul></div>
+    <div class="card"><h3>🔭 앞으로</h3><ul>
+      <li>여러 사람·조명에서 손짓 인식 정확도 측정</li>
+      <li>스피커를 달아 로봇이 직접 목소리 내기</li>
+      <li>초음파 센서로 장애물 앞에서 멈추기</li>
+      <li>사람의 <b>표정</b>까지 읽어 더 깊은 공감</li></ul></div>
+  </div>
+</section>
+
+<!-- 19 ─ thanks -->
+<section class="slide s-title" data-title="감사합니다" data-notes="마무리. 카메라를 켜 두면 관객이 손을 흔들어 라즈봇과 인사할 수 있습니다.">
+  <div class="title-left">
+    <h1>감사합니다</h1>
+    <p class="sub">라즈봇에게 손을 흔들어 인사해 주세요 👋</p>
+    <div class="qa">Q &amp; A</div>
+    <div class="mut">github.com/jang20050/razbot-gesture-robot</div>
+  </div>
+  <div class="title-right">
+    <div class="bubble live-bubble" data-live="bubble">…</div>
+    <div class="robot big"><div class="ears"><i></i><i></i></div><div class="screen"><img class="liveface" alt=""></div><div class="wheels"><i></i><i></i></div></div>
+    <div class="livechip"><span class="dot"></span><span data-live="label">손 없음</span></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- controls -->
+<div class="bar" id="bar">
+  <button id="prev" title="이전 (←)">‹</button>
+  <span id="count">1 / 19</span>
+  <button id="next" title="다음 (→)">›</button>
+  <span class="sep"></span>
+  <button id="ovBtn" title="전체 보기 (O)">▦</button>
+  <button id="notesBtn" title="발표자 노트 (N)">📝</button>
+  <button id="fsBtn" title="전체 화면 (F)">⛶</button>
+  <span class="timer" id="timer" title="눌러서 초기화">00:00</span>
+  <span class="conn" id="conn" title="라즈봇 연결 상태">● 연결 중</span>
+</div>
+<div class="progress"><div id="progress"></div></div>
+<div class="notes hide" id="notes"></div>
+<div class="overview hide" id="overview"></div>
+<div class="toast hide" id="toast"></div>
+
+<script src="/static/voice.js"></script>
+<script src="/static/card.js"></script>
+<script src="slides.js"></script>
+</body>
+</html>

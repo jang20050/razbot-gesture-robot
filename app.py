@@ -10,7 +10,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from flask import Flask, Response, jsonify, render_template_string, request, send_from_directory
+from flask import Flask, Response, jsonify, redirect, render_template_string, request, send_from_directory
 
 from companion import Companion
 from control import Controller
@@ -25,6 +25,8 @@ LABEL_KO = {"rock": "주먹 ✊", "paper": "보 ✋", "scissors": "가위 ✌️
 
 WEB = Path(__file__).with_name("web")            # the game page; the same files are deployed to Vercel
 TOKEN_FILE = Path(__file__).with_name(".token")  # access code for tunnel visitors (created by tunnel.sh)
+PPT = Path(__file__).with_name("ppt")            # interactive presentation (/ppt/), videos in ppt/media/
+VIDEO_EXT = {".mp4", ".webm", ".mov", ".m4v", ".ogg"}
 
 app = Flask(__name__, static_folder=str(WEB / "static"), static_url_path="/static")
 
@@ -272,6 +274,28 @@ def game_act(action):
         return jsonify(ok=False, msg="알 수 없는 행동"), 404
     msg = handlers[action]()
     return jsonify(ok=msg is None, msg=msg)
+
+
+@app.route("/ppt")
+def ppt_redirect():
+    return redirect("/ppt/")
+
+
+@app.route("/ppt/")
+def ppt_index():
+    return send_from_directory(PPT, "index.html")
+
+
+@app.route("/ppt/media-list")
+def ppt_media_list():
+    media = PPT / "media"
+    names = sorted(p.name for p in media.iterdir() if p.suffix.lower() in VIDEO_EXT) if media.is_dir() else []
+    return jsonify(names)
+
+
+@app.route("/ppt/<path:name>")
+def ppt_file(name):
+    return send_from_directory(PPT, name)
 
 
 @app.route("/game/card")
